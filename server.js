@@ -1,43 +1,61 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const fs = require('fs');
+const mongoose = require('mongoose');
 const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
-// Receive Location & Call Info
-app.post('/api/emergency', (req, res) => {
+// MongoDB Connect
+mongoose.connect(process.env.MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+})
+.then(() => console.log('MongoDB connected.'))
+.catch((err) => console.error('MongoDB connection error:', err));
+
+// Mongoose Schema
+const emergencySchema = new mongoose.Schema({
+  phone: String,
+  latitude: Number,
+  longitude: Number,
+  timestamp: { type: Date, default: Date.now }
+});
+
+const Emergency = mongoose.model('Emergency', emergencySchema);
+
+// API route
+app.post('/api/emergency', async (req, res) => {
   const { phone, latitude, longitude, timestamp } = req.body;
 
   if (!phone || !latitude || !longitude) {
     return res.status(400).json({ message: "Missing required fields." });
   }
 
-  const entry = {
-    phone,
-    latitude,
-    longitude,
-    timestamp: timestamp || new Date().toISOString()
-  };
-
-  // Save to local file (you can replace this with MongoDB later)
-  fs.readFile('data.json', (err, data) => {
-    const records = err ? [] : JSON.parse(data);
-    records.push(entry);
-    fs.writeFile('data.json', JSON.stringify(records, null, 2), () => {
-      res.status(200).json({ message: "Location saved." });
+  try {
+    const entry = new Emergency({
+      phone,
+      latitude,
+      longitude,
+      timestamp: timestamp || new Date()
     });
-  });
+
+    await entry.save();
+    res.status(200).json({ message: "Location saved to MongoDB." });
+  } catch (error) {
+    console.error('Error saving:', error);
+    res.status(500).json({ message: "Internal server error." });
+  }
 });
 
-// Check if server is running
+// Root route
 app.get('/', (req, res) => {
-  res.send("BD-ELS Emergency Server is running.");
+  res.send("BD-ELS Emergency Server with MongoDB is running.");
 });
 
 app.listen(PORT, () => {
