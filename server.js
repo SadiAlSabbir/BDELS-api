@@ -1,13 +1,12 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const mongoose = require('mongoose');
 const cors = require('cors');
+const mongoose = require('mongoose');
 require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Middleware
 app.use(cors());
 app.use(bodyParser.json());
 
@@ -15,21 +14,25 @@ app.use(bodyParser.json());
 mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true
-})
-.then(() => console.log('MongoDB connected.'))
-.catch((err) => console.error('MongoDB connection error:', err));
+}).then(() => {
+  console.log("Connected to MongoDB");
+}).catch((err) => {
+  console.error("MongoDB connection error:", err);
+});
 
-// Mongoose Schema
+// Schema
 const emergencySchema = new mongoose.Schema({
   phone: String,
   latitude: Number,
   longitude: Number,
-  timestamp: { type: Date, default: Date.now }
+  timestamp: {
+    type: Date,
+    default: Date.now
+  }
 });
-
 const Emergency = mongoose.model('Emergency', emergencySchema);
 
-// API route
+// Routes
 app.post('/api/emergency', async (req, res) => {
   const { phone, latitude, longitude, timestamp } = req.body;
 
@@ -47,15 +50,13 @@ app.post('/api/emergency', async (req, res) => {
 
     await entry.save();
     res.status(200).json({ message: "Location saved to MongoDB." });
-  } catch (error) {
-    console.error('Error saving:', error);
-    res.status(500).json({ message: "Internal server error." });
+  } catch (err) {
+    res.status(500).json({ message: "Error saving data." });
   }
 });
 
-// Root route
 app.get('/', (req, res) => {
-  res.send("BD-ELS Emergency Server with MongoDB is running.");
+  res.send("BD-ELS Emergency Server is running with MongoDB.");
 });
 
 app.listen(PORT, () => {
